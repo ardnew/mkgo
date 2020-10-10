@@ -8,11 +8,11 @@
 
 [![GoDoc][docimg]][docurl][![Go Report Card][repimg]][repurl]
 
-| mkgo creates a new Go main module using a source code template.
-| It integrates `github.com/ardnew/version` to embed a version and changelog,
-| and it uses the standard `flag` package to accept command-line arguments.
-| The module is created at a given Go import path relative to the first path
-| found in the user's `GOPATH` environment variable.
+> mkgo creates a new Go main module using a source code template.
+> It integrates `github.com/ardnew/version` to embed a version and changelog,
+> and it uses the standard `flag` package to accept command-line arguments.
+> The module is created at a given Go import path relative to the first path
+> found in the user's `GOPATH` environment variable.
 
 ## Usage
 
