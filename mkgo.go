@@ -26,6 +26,13 @@ func init() {
 		Description: []string{
 			"initial implementation",
 		},
+	}, {
+		Package: "mkgo",
+		Version: "0.2.0",
+		Date:    "2020 Oct 10",
+		Description: []string{
+			"add support for README and LICENSE generation",
+		},
 	}}
 }
 
@@ -36,16 +43,28 @@ func main() {
 		argVersion   bool
 		argMkDate    string
 		argMkVersion string
+		argReadme    bool
+		argLicense   string
+		argUser      string
 		argOverwrite bool
 	)
 
 	currDate := time.Now().Format(dateFormat)
+	currUser := os.Getenv("USER")
+
+	knownLicense := []string{}
+	for name := range licenseTemplate {
+		knownLicense = append(knownLicense, name)
+	}
 
 	flag.BoolVar(&argChangeLog, "changelog", false, "display change history")
 	flag.BoolVar(&argVersion, "version", false, "display version information")
 	flag.StringVar(&argMkDate, "d", currDate, "date of initial revision")
 	flag.StringVar(&argMkVersion, "s", semVersion, "semantic version of initial revision")
 	flag.BoolVar(&argOverwrite, "f", false, "force overwriting file if it already exists")
+	flag.BoolVar(&argReadme, "r", false, "create a simple README.md")
+	flag.StringVar(&argLicense, "l", "", "create a LICENSE file (options: "+strings.Join(knownLicense, " ")+")")
+	flag.StringVar(&argUser, "u", currUser, "user name for license file copyright")
 	flag.Parse()
 
 	if argChangeLog {
@@ -53,24 +72,26 @@ func main() {
 	} else if argVersion {
 		fmt.Printf("mkgo version %s\n", version.String())
 	} else {
+
 		if len(flag.Args()) == 0 {
 			fmt.Println("error: no package path specified (use -h for help)")
 			os.Exit(1)
 		}
+
 		path, name := packagePath(flag.Arg(0))
 		if err := os.MkdirAll(path, os.ModePerm); nil != err {
 			fmt.Printf("error: %s\n", err.Error())
 			os.Exit(2)
 		}
+
 		sourcePath := filepath.Join(path, name+".go")
 		if exists, isDir := fileExists(sourcePath); !exists || argOverwrite {
 			if isDir {
 				fmt.Printf("error: output file is a directory: %s\n", sourcePath)
 				os.Exit(3)
 			}
-			err := ioutil.WriteFile(sourcePath,
-				[]byte(template.insert(name, argMkDate, argMkVersion).String()), 0664)
-			if nil != err {
+			template.insert(flag.Arg(0), name, argMkDate, argMkVersion, argUser)
+			if err := ioutil.WriteFile(sourcePath, []byte(template.String()), 0664); nil != err {
 				fmt.Printf("error: %s\n", err.Error())
 				os.Exit(4)
 			}
@@ -82,11 +103,49 @@ func main() {
 				fmt.Print(out)
 				os.Exit(6)
 			}
-			fmt.Printf("mkgo: successfully created %q: %s\n", flag.Arg(0), path)
 		} else {
 			fmt.Printf("error: file exists (use -f to overwrite): %s\n", sourcePath)
 			os.Exit(7)
 		}
+
+		licensePath := filepath.Join(path, "LICENSE")
+		if license, ok := licenseTemplate[argLicense]; !ok {
+			fmt.Printf("error: unsupported license (use -h to view options): %s\n", argLicense)
+			os.Exit(8)
+		} else {
+			if exists, isDir := fileExists(licensePath); !exists || argOverwrite {
+				if isDir {
+					fmt.Printf("error: output file is a directory: %s\n", licensePath)
+					os.Exit(9)
+				}
+				license.insert(flag.Arg(0), name, argMkDate, argMkVersion, argUser)
+				if err := ioutil.WriteFile(licensePath, []byte(license.String()), 0664); nil != err {
+					fmt.Printf("error: %s\n", err.Error())
+					os.Exit(10)
+				}
+			} else {
+				fmt.Printf("error: file exists (use -f to overwrite): %s\n", licensePath)
+				os.Exit(11)
+			}
+		}
+
+		readmePath := filepath.Join(path, "README.md")
+		if exists, isDir := fileExists(readmePath); !exists || argOverwrite {
+			if isDir {
+				fmt.Printf("error: output file is a directory: %s\n", readmePath)
+				os.Exit(9)
+			}
+			readme.insert(flag.Arg(0), name, argMkDate, argMkVersion, argUser)
+			if err := ioutil.WriteFile(readmePath, []byte(readme.String()), 0664); nil != err {
+				fmt.Printf("error: %s\n", err.Error())
+				os.Exit(10)
+			}
+		} else {
+			fmt.Printf("error: file exists (use -f to overwrite): %s\n", readmePath)
+			os.Exit(11)
+		}
+
+		fmt.Printf("mkgo: successfully created %q: %s\n", flag.Arg(0), path)
 	}
 }
 
@@ -147,21 +206,24 @@ func packagePath(path string) (full, name string) {
 	return full, name
 }
 
-// Template represents a Go source code file whose elements are individual lines
-// of the file.
+// Template represents a file whose elements are individual lines of the file.
 type Template []string
 
 // insert replaces all placeholder tokens in the receiver Template's elements
 // with the given replacement values, returning the resulting Template.
-func (tmpl *Template) insert(name, date, version string) *Template {
+func (tmpl *Template) insert(path, name, date, version, user string) *Template {
 	for i, s := range *tmpl {
 		(*tmpl)[i] =
 			strings.ReplaceAll(
 				strings.ReplaceAll(
-					strings.ReplaceAll(s,
-						"__NAME__", name),
-					"__DATE__", date),
-				"__VERSION__", version)
+					strings.ReplaceAll(
+						strings.ReplaceAll(
+							strings.ReplaceAll(s,
+								"__IMPORT__", path),
+							"__NAME__", name),
+						"__DATE__", date),
+					"__VERSION__", version),
+				"__USER__", user)
 	}
 	return tmpl
 }
@@ -214,5 +276,67 @@ var (
 		`		// main`,
 		`	}`,
 		`}`,
+	}
+	licenseTemplate = map[string]Template{
+		"MIT": Template{
+			`MIT License`,
+			``,
+			`Copyright (c) 2020 __USER__`,
+			``,
+			`Permission is hereby granted, free of charge, to any person obtaining a copy`,
+			`of this software and associated documentation files (the "Software"), to deal`,
+			`in the Software without restriction, including without limitation the rights`,
+			`to use, copy, modify, merge, publish, distribute, sublicense, and/or sell`,
+			`copies of the Software, and to permit persons to whom the Software is`,
+			`furnished to do so, subject to the following conditions:`,
+			``,
+			`The above copyright notice and this permission notice shall be included in all`,
+			`copies or substantial portions of the Software.`,
+			``,
+			`THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR`,
+			`IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,`,
+			`FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE`,
+			`AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER`,
+			`LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,`,
+			`OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE`,
+			`SOFTWARE.			`,
+		},
+	}
+	readme = Template{
+		`[docimg]:https://godoc.org/__IMPORT__?status.svg`,
+		`[docurl]:https://godoc.org/__IMPORT__`,
+		`[repimg]:https://goreportcard.com/badge/__IMPORT__`,
+		`[repurl]:https://goreportcard.com/report/__IMPORT__`,
+		``,
+		`# __NAME__`,
+		`#### __NAME__`,
+		``,
+		`[![GoDoc][docimg]][docurl] [![Go Report Card][repimg]][repurl]`,
+		``,
+		`## Usage`,
+		``,
+		`How to use:`,
+		``,
+		"```sh",
+		`__NAME__ ...`,
+		"```",
+		``,
+		"Use the `-h` flag for usage summary:",
+		``,
+		"```",
+		`Usage of __NAME__:`,
+		`  -changelog`,
+		`		display change history`,
+		`  -version`,
+		`		display version information`,
+		"```",
+		``,
+		`## Installation`,
+		``,
+		`Use the builtin Go package manager:`,
+		``,
+		"```sh",
+		`go get -v __IMPORT__`,
+		"```",
 	}
 )
