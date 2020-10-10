@@ -6,7 +6,7 @@
 # mkgo
 #### Create a Go main module using template source file
 
-[![GoDoc][docimg]][docurl][![Go Report Card][repimg]][repurl]
+[![GoDoc][docimg]][docurl] [![Go Report Card][repimg]][repurl]
 
 > mkgo creates a new Go main module using a source code template.
 > It integrates `github.com/ardnew/version` to embed a version and changelog,
