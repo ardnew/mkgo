@@ -22,6 +22,18 @@ Simply provide the Go import path of the desired module:
 mkgo github.com/ardnew/mycmd
 ```
 
+Also generate a simple `README.md` (with GoDoc and GoReportCard badges) and `LICENSE` (MIT) file:
+
+```sh
+mkgo -r -l MIT -u ardnew github.com/ardnew/mycmd
+```
+
+If there were no errors, you should see the following output:
+
+```
+mkgo: successfully created "github.com/ardnew/myapp": /home/andrew/Code/go/src/github.com/ardnew/myapp
+```
+
 Use the `-h` flag for usage summary:
 
 ```
@@ -31,8 +43,13 @@ Usage of mkgo:
   -d string
 		date of initial revision (default "2020 Oct 10")
   -f    force overwriting file if it already exists
+  -l string
+		create a LICENSE file (options: MIT)
+  -r    create a simple README.md
   -s string
 		semantic version of initial revision (default "0.1.0")
+  -u string
+		user name for license file copyright (default "andrew")
   -version
 		display version information
 ```
