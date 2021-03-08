@@ -33,13 +33,20 @@ func init() {
 		Description: []string{
 			"add support for README and LICENSE generation",
 		},
+	}, {
+		Package: "mkgo",
+		Version: "0.2.1",
+		Date:    "2021 Mar 8",
+		Description: []string{
+			"use shorter, abbreviated flags in generated source",
+		},
 	}}
 }
 
 func main() {
 
 	var (
-		argChangeLog bool
+		argChanges   bool
 		argVersion   bool
 		argMkDate    string
 		argMkVersion string
@@ -57,7 +64,7 @@ func main() {
 		knownLicense = append(knownLicense, name)
 	}
 
-	flag.BoolVar(&argChangeLog, "changelog", false, "display change history")
+	flag.BoolVar(&argChanges, "changelog", false, "display change history")
 	flag.BoolVar(&argVersion, "version", false, "display version information")
 	flag.StringVar(&argMkDate, "d", currDate, "date of initial revision")
 	flag.StringVar(&argMkVersion, "s", semVersion, "semantic version of initial revision")
@@ -67,7 +74,7 @@ func main() {
 	flag.StringVar(&argUser, "u", currUser, "user name for license file copyright")
 	flag.Parse()
 
-	if argChangeLog {
+	if argChanges {
 		version.PrintChangeLog()
 	} else if argVersion {
 		fmt.Printf("mkgo version %s\n", version.String())
@@ -260,15 +267,15 @@ var (
 		`func main() {`,
 		``,
 		`	var (`,
-		`		argChangeLog bool`,
-		`		argVersion   bool`,
+		`		argVersion bool`,
+		`		argChanges bool`,
 		`	)`,
 		``,
-		`	flag.BoolVar(&argChangeLog, "changelog", false, "display change history")`,
-		`	flag.BoolVar(&argVersion, "version", false, "display version information")`,
+		`	flag.BoolVar(&argVersion, "v", false, "Display version information")`,
+		`	flag.BoolVar(&argChanges, "V", false, "Display change history")`,
 		`	flag.Parse()`,
 		``,
-		`	if argChangeLog {`,
+		`	if argChanges {`,
 		`		version.PrintChangeLog()`,
 		`	} else if argVersion {`,
 		`		fmt.Printf("__NAME__ version %s\n", version.String())`,
